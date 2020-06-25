@@ -89,4 +89,4 @@ conv_lstm = conv_lstm()
 conv_lstm.summary()
 
 conv_lstm.fit(dataset_train, validation_data=dataset_val, epochs=10)
-conv_lstm.save("model/cnn_lstm_test.h5")
+conv_lstm.save("model/cnn_lstm_absolute_test.h5")
