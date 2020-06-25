@@ -8,10 +8,10 @@ from sklearn.model_selection import train_test_split
 from os.path import join
 
 # parameter
-timestep = 8
+timestep = 4
 height = 361
 width = 720
-num_target = 8
+num_target = 4
 
 def multivariate_data(dataset, target, start_index, end_index, history_size,
                       target_size, step, single_step=False):
@@ -42,12 +42,12 @@ def multivariate_data(dataset, target, start_index, end_index, history_size,
   return np.array(data), np.array(labels)
   
 def normalization(data):
-  maximum = data.max()
-  minimum = data.min()
-  return (data - minimum) / (maximum - minimum)
+  x_max = data.min(axis=(1,2),  keepdims=True)
+  x_min = data.max(axis=(1,2),  keepdims=True)
+  return (data - x_min) / (x_max - x_min)
 
 def prepare_data():
-    path = "/data/temperature0401.pkl"
+    path = "data/temperature0401.pkl"
     data = []
     with open(path, "rb") as f:
         while True:
@@ -60,6 +60,7 @@ def prepare_data():
     data_april_1 = data[:128]
     data_april_1 = np.array([f[1] for f in data_april_1])
     data_april_1 = data_april_1.reshape((-1, 361, 720, 1))
+    data_april_1 = normalization(data_april_1)
 
     split_index = int(len(data_april_1) * 0.8)
     train_data = data_april_1[:split_index]
@@ -68,10 +69,10 @@ def prepare_data():
     xtrain_data, ytrain_data = multivariate_data(train_data, train_data, 0, len(train_data), timestep, num_target, 1)
     xval_data, yval_data = multivariate_data(validation_data, validation_data, 0, len(validation_data), timestep, num_target, 1)
 
-    dataset_train = tf.data.Dataset.from_tensor_slices((normalization(xtrain_data),ytrain_data))
+    dataset_train = tf.data.Dataset.from_tensor_slices((xtrain_data,ytrain_data))
     dataset_train = dataset_train.batch(1)
 
-    dataset_val = tf.data.Dataset.from_tensor_slices((normalization(xval_data), yval_data))
+    dataset_val = tf.data.Dataset.from_tensor_slices((xval_data, yval_data))
     dataset_val = dataset_val.batch(1)
     return (dataset_train, dataset_val)
 
@@ -88,4 +89,4 @@ conv_lstm = conv_lstm()
 conv_lstm.summary()
 
 conv_lstm.fit(dataset_train, validation_data=dataset_val, epochs=10)
-conv_lstm.save("/model/cnn_lstm.h5")
+conv_lstm.save("model/cnn_lstm_test.h5")
