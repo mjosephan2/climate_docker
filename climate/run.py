@@ -60,7 +60,7 @@ def prepare_data():
     data_april_1 = data[:128]
     data_april_1 = np.array([f[1] for f in data_april_1])
     data_april_1 = data_april_1.reshape((-1, 361, 720, 1))
-    data_april_1 = normalization(data_april_1)
+    # data_april_1 = normalization(data_april_1)
 
     split_index = int(len(data_april_1) * 0.8)
     train_data = data_april_1[:split_index]
@@ -69,10 +69,10 @@ def prepare_data():
     xtrain_data, ytrain_data = multivariate_data(train_data, train_data, 0, len(train_data), timestep, num_target, 1)
     xval_data, yval_data = multivariate_data(validation_data, validation_data, 0, len(validation_data), timestep, num_target, 1)
 
-    dataset_train = tf.data.Dataset.from_tensor_slices((xtrain_data,ytrain_data))
+    dataset_train = tf.data.Dataset.from_tensor_slices((normalization(xtrain_data),ytrain_data))
     dataset_train = dataset_train.batch(1)
 
-    dataset_val = tf.data.Dataset.from_tensor_slices((xval_data, yval_data))
+    dataset_val = tf.data.Dataset.from_tensor_slices((normalization(xval_data), yval_data))
     dataset_val = dataset_val.batch(1)
     return (dataset_train, dataset_val)
 
