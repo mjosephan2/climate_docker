@@ -14,19 +14,6 @@ width = 720
 num_parameters = 241
 num_target = 2
 
-# BASE_URL = f"/content/drive/My Drive/Climate Modeling/Processed data/cnn/normalize/"
-BASE_URL = f"/data/timeseries"
-paths = glob.glob(join(BASE_URL,"*.pkl"), recursive=True)
-sorted(paths)
-
-# increase number of sets
-paths = paths[:64]
-
-# train_paths, validation_paths = train_test_split(paths, test_size=0.2, random_state = seed)
-split_index = int(len(paths) * 0.8)
-train_paths = paths[:split_index]
-validation_paths = paths[split_index:]
-
 def multivariate_data(dataset, target, start_index, end_index, history_size,
                       target_size, step, single_step=False):
   data = []
@@ -54,21 +41,6 @@ def multivariate_data(dataset, target, start_index, end_index, history_size,
   print(len(data), 'len of data', start_index, end_index)
   print(len(labels), 'len of labels', start_index, end_index)
   return np.array(data), np.array(labels)
-
-x_path, y_path = multivariate_data(train_paths, train_paths, 0, len(train_paths), timestep, num_target, 1)
-x_val_path, y_val_path = multivariate_data(validation_paths, validation_paths, 0, len(validation_paths), timestep, num_target, 1)
-
-import pickle
-import tensorflow as tf
-import numpy as np
-import glob
-import pygrib
-
-# def _parse_file(file):
-#   with open(file.numpy(), "rb") as f:
-#     data = pickle.load(f)
-#     data = next(iter(data.values()))
-#   return (data["x"], data["y"])
 
 def normalize(datas):
   x_min = datas.min(axis=(0,1),  keepdims=True)
@@ -109,16 +81,6 @@ def _function(x, y):
   y.set_shape((num_target, 361, 720, 1))
   return x,y
 
-dataset = tf.data.Dataset.from_tensor_slices((x_path,y_path))
-dataset = dataset.map(_function)
-dataset = dataset.batch(1)
-dataset = dataset.cache("./")
-
-val_dataset = tf.data.Dataset.from_tensor_slices((x_val_path, y_val_path))
-val_dataset = val_dataset.map(_function)
-val_dataset = val_dataset.batch(1)
-val_dataset = val_dataset.cache("./")
-
 def cnn_lstm():
   # parameter
   TimeDistributed = tf.keras.layers.TimeDistributed
@@ -137,10 +99,33 @@ def cnn_lstm():
   cnn.compile(optimizer='adam', loss='mse', metrics=['mse','mae'])
   return cnn
 
-cnn_lstm = cnn_lstm()
-cnn_lstm.fit(dataset, epochs=10, validation_data=val_dataset)
-cnn_lstm.save("model/cnn_lstm_2t_64_minmax.h5")
+if __name__ == "__main__":
+    # BASE_URL = f"/content/drive/My Drive/Climate Modeling/Processed data/cnn/normalize/"
+    BASE_URL = f"/workspace/climate/data/timeseries"
+    paths = glob.glob(join(BASE_URL,"*.pkl"), recursive=True)
+    sorted(paths)
 
+    # limit the number of paths
+    paths = paths[:256]
 
+    # train_paths, validation_paths = train_test_split(paths, test_size=0.2, random_state = seed)
+    split_index = int(len(paths) * 0.8)
+    train_paths = paths[:split_index]
+    validation_paths = paths[split_index:]
 
+    x_path, y_path = multivariate_data(train_paths, train_paths, 0, len(train_paths), timestep, num_target, 1)
+    x_val_path, y_val_path = multivariate_data(validation_paths, validation_paths, 0, len(validation_paths), timestep, num_target, 1)
 
+    dataset = tf.data.Dataset.from_tensor_slices((x_path,y_path))
+    dataset = dataset.map(_function)
+    dataset = dataset.batch(1)
+    dataset = dataset.cache("./")
+
+    val_dataset = tf.data.Dataset.from_tensor_slices((x_val_path, y_val_path))
+    val_dataset = val_dataset.map(_function)
+    val_dataset = val_dataset.batch(1)
+    val_dataset = val_dataset.cache("./")
+
+    cnn_lstm = cnn_lstm()
+    cnn_lstm.fit(dataset, epochs=10, validation_data=val_dataset)
+    cnn_lstm.save("model/cnn_lstm_4t_256_minmax.h5")

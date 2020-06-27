@@ -1,7 +1,7 @@
 
 nvidia-docker run --name=climate_model \
                   -v /home/clima_modelers/data:/workspace/climate/data \
-                  -v /home/clima_modelers/model:/workspace/climate/model \
+                  -v /home/clima_modelers/climate_docker/climate/model:/usr/src/model \
                   -it climate
 
 nvidia-docker build . -t climate
