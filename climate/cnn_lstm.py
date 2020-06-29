@@ -87,16 +87,16 @@ def cnn_lstm():
   # parameter
   TimeDistributed = tf.keras.layers.TimeDistributed
   input_data = tf.keras.layers.Input((timestep, height, width, num_parameters))
-  x = TimeDistributed(tf.keras.layers.Conv2D(128, (5,5), activation='relu', padding='same'))(input_data)
+  x = TimeDistributed(tf.keras.layers.Conv2D(128, (1,1), activation='relu', padding='same'))(input_data)
   x = tf.keras.layers.BatchNormalization()(x)
-  x = TimeDistributed(tf.keras.layers.Conv2D(64, (5,5), activation='relu', padding='same'))(x)
+  x = TimeDistributed(tf.keras.layers.Conv2D(64, (1,1), activation='relu', padding='same'))(x)
   x = tf.keras.layers.BatchNormalization()(x)
-  x = TimeDistributed(tf.keras.layers.Conv2D(1, (5,5), activation='relu', padding='same'))(x)
+  x = TimeDistributed(tf.keras.layers.Conv2D(1, (1,1), activation='relu', padding='same'))(x)
   x = tf.keras.layers.BatchNormalization()(x)
 
-  x = tf.keras.layers.ConvLSTM2D(64, (5,5), activation='relu', padding='same', return_sequences=True)(x)
+  x = tf.keras.layers.ConvLSTM2D(64, (1,1), activation='relu', padding='same', return_sequences=True)(x)
   x = tf.keras.layers.BatchNormalization()(x)
-  x = tf.keras.layers.ConvLSTM2D(64, (5,5), activation='relu', padding='same', return_sequences=True)(x)
+  x = tf.keras.layers.ConvLSTM2D(64, (1,1), activation='relu', padding='same', return_sequences=True)(x)
   x = tf.keras.layers.BatchNormalization()(x)
   # x = tf.keras.layers.Conv3D(1, (3,3,3), activation='linear', padding='same')(x)
   # x = tf.keras.layers.Dense(1, activation='linear')(x)
@@ -136,4 +136,4 @@ if __name__ == "__main__":
 
     cnn_lstm = cnn_lstm()
     cnn_lstm.fit(dataset, epochs=15, validation_data=val_dataset)
-    cnn_lstm.save("model/cnn_lstm_2t_256_cnn5_batch_minmax_all_small.h5")
+    cnn_lstm.save("model/cnn_lstm_2t_256_cnn1_batch_minmax_all_small.h5")
