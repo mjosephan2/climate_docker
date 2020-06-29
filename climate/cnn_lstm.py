@@ -11,7 +11,7 @@ from os.path import join
 timestep = 2
 height = 361
 width = 720
-num_parameters = 241
+num_parameters = 242
 num_target = 2
 
 def multivariate_data(dataset, target, start_index, end_index, history_size,
@@ -61,7 +61,9 @@ def _parse_pickle_file(x, y):
     with open(path, 'rb') as f:
       data = pickle.load(f)
       # data = next(iter(data.values()))
-      x_data.append(normalize(data["x"]))
+      temp_x, temp_y = data["x"], data["y"]
+      temp = np.concatenate([temp_x, temp_y], 2)
+      x_data.append(normalize(temp))
 
       # include surface temp
 
@@ -77,7 +79,7 @@ def _parse_pickle_file(x, y):
 
 def _function(x, y):
   x, y = tf.py_function(_parse_pickle_file, [x, y], [tf.float32, tf.float32])
-  x.set_shape((timestep, 361, 720, 241))
+  x.set_shape((timestep, 361, 720, 242))
   y.set_shape((num_target, 361, 720, 1))
   return x,y
 
@@ -85,15 +87,21 @@ def cnn_lstm():
   # parameter
   TimeDistributed = tf.keras.layers.TimeDistributed
   input_data = tf.keras.layers.Input((timestep, height, width, num_parameters))
-  x = TimeDistributed(tf.keras.layers.Conv2D(256, (3,3), activation='relu', padding='same'))(input_data)
-  x = TimeDistributed(tf.keras.layers.Conv2D(128, (3,3), activation='relu', padding='same'))(x)
-  x = TimeDistributed(tf.keras.layers.Conv2D(1, (3,3), activation='relu', padding='same'))(x)
+  x = TimeDistributed(tf.keras.layers.Conv2D(128, (5,5), activation='relu', padding='same'))(input_data)
+  x = tf.keras.layers.BatchNormalization()(x)
+  x = TimeDistributed(tf.keras.layers.Conv2D(64, (5,5), activation='relu', padding='same'))(x)
+  x = tf.keras.layers.BatchNormalization()(x)
+  x = TimeDistributed(tf.keras.layers.Conv2D(1, (5,5), activation='relu', padding='same'))(x)
+  x = tf.keras.layers.BatchNormalization()(x)
 
-  x = tf.keras.layers.ConvLSTM2D(128, (3,3), activation='relu', padding='same', return_sequences=True)(x)
-  x = tf.keras.layers.ConvLSTM2D(64, (3,3), activation='relu', padding='same')(x)
+  x = tf.keras.layers.ConvLSTM2D(64, (5,5), activation='relu', padding='same', return_sequences=True)(x)
+  x = tf.keras.layers.BatchNormalization()(x)
+  x = tf.keras.layers.ConvLSTM2D(64, (5,5), activation='relu', padding='same', return_sequences=True)(x)
+  x = tf.keras.layers.BatchNormalization()(x)
   # x = tf.keras.layers.Conv3D(1, (3,3,3), activation='linear', padding='same')(x)
-  x = tf.keras.layers.Dense(num_target, activation='linear')(x)
-  x = tf.keras.layers.Reshape((num_target, height, width, 1))(x)
+  # x = tf.keras.layers.Dense(1, activation='linear')(x)
+  x = TimeDistributed(tf.keras.layers.Dense(1, activation='linear'))(x)
+  # x = tf.keras.layers.Reshape((num_target, height, width, 1))(x)
   cnn = tf.keras.Model(inputs=input_data, outputs=x)
 
   cnn.compile(optimizer='adam', loss='mse', metrics=['mse','mae'])
@@ -127,5 +135,5 @@ if __name__ == "__main__":
     val_dataset = val_dataset.cache("./")
 
     cnn_lstm = cnn_lstm()
-    cnn_lstm.fit(dataset, epochs=10, validation_data=val_dataset)
-    cnn_lstm.save("model/cnn_lstm_4t_256_minmax.h5")
+    cnn_lstm.fit(dataset, epochs=15, validation_data=val_dataset)
+    cnn_lstm.save("model/cnn_lstm_2t_256_cnn5_batch_minmax_all_small.h5")

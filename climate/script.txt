@@ -1,9 +1,9 @@
 
 nvidia-docker run --name=climate_model \
                   -v /home/clima_modelers/data:/workspace/climate/data \
-                  -v /home/clima_modelers/climate_docker/climate/model:/usr/src/model \
+                  -v /home/clima_modelers/climate_docker/climate/model:/workspace/climate/model\
                   -it climate
 
 nvidia-docker build . -t climate
-
+docker rmi $(docker images -f "dangling=true" -q)
 /climate_docker/climate/model
