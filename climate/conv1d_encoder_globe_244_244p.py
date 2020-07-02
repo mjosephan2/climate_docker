@@ -11,12 +11,12 @@ Original file is located at
 import pandas as pd
 import numpy as np
 import pygrib
-from tqdm import tqdm_notebook
+from tqdm import tqdm
 
 from sklearn import preprocessing
 
-from keras.models import Model
 from tensorflow import keras
+from keras.models import Model
 from keras import models
 import tensorflow as tf
 
@@ -92,7 +92,7 @@ def create_labels(df_raw):
   dfrounded = df_raw.round()
 
   row_list = []
-  for i in tqdm_notebook(range((dfrounded.shape[0])), desc = "Creating label arrays"):
+  for i in tqdm(range((dfrounded.shape[0])), desc = "Creating label arrays"):
     row_list.append(list(dfrounded.iloc[i, :]))
 
   array_labels = np.array(row_list)
@@ -101,7 +101,7 @@ def create_labels(df_raw):
 
 #define function to normalise all data variables
 def normalise_df(df_raw):
-  for i in tqdm_notebook(list(range(0, df_raw.shape[1])), desc = "Normalising df"):
+  for i in tqdm(list(range(0, df_raw.shape[1])), desc = "Normalising df"):
     df_raw.iloc[:, i] = (df_raw.iloc[:, i] - min(df_raw.iloc[:, i]))/(max(df_raw.iloc[:, i]) - min(df_raw.iloc[:, i]))
 
   df_normalised = df_raw
@@ -156,7 +156,7 @@ conv_encoder_244p.compile(loss = "mse", optimizer = "adam", metrics = ["mae", "m
 conv_encoder_244p.summary()
 
 #visualise model
-keras.utils.plot_model(conv_encoder_244p, "Conv1D Encoder 244 Parallel.png")
+# keras.utils.plot_model(conv_encoder_244p, "Conv1D Encoder 244 Parallel.png")
 
 """#**Train model on 1st timestep**"""
 
@@ -164,8 +164,8 @@ def fit_model(model_name, x, y, epochs = 30, batch_size = 64):
 
   history = model_name.fit(x, y, epochs = epochs, batch_size = batch_size)
   return history
-
-history = fit_model(conv_encoder_244p, apr01_003_x, apr01_003_y, batch_size = 4)
+apr01_003_y = apr01_003_y.reshape(-1, 244)
+history = fit_model(conv_encoder_244p, apr01_003_x, np.split(apr01_003_y, 244, axis=1) , batch_size = 4)
 
 # score = conv_encoder_244p.evaluate(apr01_006_x, apr01_006_y, verbose = 0)
 # print('Test loss:', score[0])

@@ -11,7 +11,7 @@ from os.path import join
 timestep = 2
 height = 361
 width = 720
-num_parameters = 242
+num_parameters = 241
 num_target = 2
 
 def multivariate_data(dataset, target, start_index, end_index, history_size,
@@ -52,49 +52,38 @@ def normalize(datas):
   x_norm[wherenan] = 0
   return x_norm.astype("float32")
 
-def _parse_pickle_file(x, y):
-  x = x.numpy()
-  y = y.numpy()
-  x_data = []
-  y_data = []
-  for path in x:
-    with open(path, 'rb') as f:
-      data = pickle.load(f)
-      # data = next(iter(data.values()))
-      temp_x, temp_y = data["x"], data["y"]
-      temp = np.concatenate([temp_x, temp_y], 2)
-      x_data.append(normalize(temp))
+def _parse_pickle_file(x):
+    x = x.numpy()
+    with open(x, 'rb') as f:
+        data = pickle.load(f)
+        # data = next(iter(data.values()))
+        # temp_x, temp_y = data["x"], data["y"]
+        # temp = np.concatenate([temp_x, temp_y], 2)
+        x_data = normalize(data["x"])
+        y_data = normalize(data["y"])
+    return x_data, y_data
 
-      # include surface temp
-
-  for path in y:
-    with open(path, 'rb') as f:
-      data = pickle.load(f)
-      # data = next(iter(data.values()))
-      y_data.append(normalize(data["y"]))
-  x_data = np.array(x_data)
-  y_data = np.array(y_data)
-
-  return x_data, y_data
-
-def _function(x, y):
-  x, y = tf.py_function(_parse_pickle_file, [x, y], [tf.float32, tf.float32])
-  x.set_shape((timestep, 361, 720, 242))
-  y.set_shape((num_target, 361, 720, 1))
+def _function(x):
+  x, y = tf.py_function(_parse_pickle_file, [x], [tf.float32, tf.float32])
+  x.set_shape((height, width, num_parameters))
+  y.set_shape((height, width, 1))
   return x,y
 
 def cnn_lstm():
   # parameter
-  TimeDistributed = tf.keras.layers.TimeDistributed
-  input_data = tf.keras.layers.Input((timestep, height, width, num_parameters))
-  x = TimeDistributed(tf.keras.layers.Conv2D(64, (3,3), padding='same'))(input_data)
-  x = tf.keras.layers.LeakyReLU()(x)
+  input_data = tf.keras.layers.Input((height, width, num_parameters))
+  x = tf.keras.layers.Conv2D(128, (5,5), activation='relu', padding='same')(input_data)
+  x = tf.keras.layers.BatchNormalization()(x)
+  x = tf.keras.layers.Conv2D(64, (3,3), activation='relu', padding='same')(x)
+  x = tf.keras.layers.BatchNormalization()(x)
+  x = tf.keras.layers.Conv2D(32, (3,3), activation='relu', padding='same')(x)
+  x = tf.keras.layers.BatchNormalization()(x)
+  x = tf.keras.layers.Conv2D(32, (3,3), activation='relu', padding='same')(x)
+  x = tf.keras.layers.BatchNormalization()(x)
+  x = tf.keras.layers.Conv2D(1, (1,1), activation='relu', padding='same')(x)
   x = tf.keras.layers.BatchNormalization()(x)
 
-  x = tf.keras.layers.ConvLSTM2D(64, (3,3), activation='relu', padding='same', return_sequences=True)(x)
-  # x = tf.keras.layers.BatchNormalization()(x)
-  x = TimeDistributed(tf.keras.layers.Dense(64, activation='linear'))(x)
-  x = TimeDistributed(tf.keras.layers.Dense(1, activation='linear'))(x)
+  x = tf.keras.layers.Dense(1, activation='linear')(x)
   # x = tf.keras.layers.Reshape((num_target, height, width, 1))(x)
   cnn = tf.keras.Model(inputs=input_data, outputs=x)
 
@@ -115,19 +104,16 @@ if __name__ == "__main__":
     train_paths = paths[:split_index]
     validation_paths = paths[split_index:]
 
-    x_path, y_path = multivariate_data(train_paths, train_paths, 0, len(train_paths), timestep, num_target, 1)
-    x_val_path, y_val_path = multivariate_data(validation_paths, validation_paths, 0, len(validation_paths), timestep, num_target, 1)
-
-    dataset = tf.data.Dataset.from_tensor_slices((x_path,y_path))
+    dataset = tf.data.Dataset.from_tensor_slices(train_paths)
     dataset = dataset.map(_function)
     dataset = dataset.batch(1)
     dataset = dataset.cache("./")
 
-    val_dataset = tf.data.Dataset.from_tensor_slices((x_val_path, y_val_path))
+    val_dataset = tf.data.Dataset.from_tensor_slices(validation_paths)
     val_dataset = val_dataset.map(_function)
     val_dataset = val_dataset.batch(1)
     val_dataset = val_dataset.cache("./")
 
     cnn_lstm = cnn_lstm()
     cnn_lstm.fit(dataset, epochs=15, validation_data=val_dataset)
-    cnn_lstm.save("model/cnn_lstm_2t_256_cnn1_batch_minmax_all_small.h5")
+    cnn_lstm.save("model/cnn_batch_small_v1.h5")
